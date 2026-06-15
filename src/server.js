@@ -9,11 +9,33 @@ import { TIPOS_CONTRATO } from './contrata/codigos.js';
 import { fichaVacia, camposQueFaltan } from './dominio/esquema.js';
 import { validarDocumento, validarNafFormato } from './validadores/identidad.js';
 import { listarEntradas, guardarEntrada } from './almacen/entradas.js';
+import { requireAuth, comprobarCredenciales, ponerCookieSesion, borrarCookieSesion, sesionDe, authConfigurada } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: '15mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// --- Autenticacion: protege /api/* salvo login/logout/me/health ---
+const RUTAS_PUBLICAS = new Set(['/api/login', '/api/logout', '/api/me', '/api/health']);
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/') || RUTAS_PUBLICAS.has(req.path)) return next();
+  return requireAuth(req, res, next);
+});
+app.post('/api/login', (req, res) => {
+  const { usuario, password } = req.body || {};
+  if (comprobarCredenciales(usuario, password)) {
+    ponerCookieSesion(res, req, usuario);
+    return res.json({ ok: true, usuario });
+  }
+  res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
+});
+app.post('/api/logout', (req, res) => { borrarCookieSesion(res, req); res.json({ ok: true }); });
+app.get('/api/me', (req, res) => {
+  const s = sesionDe(req);
+  if (s) return res.json({ usuario: s.u, authConfigurada: authConfigurada() });
+  res.status(401).json({ authConfigurada: authConfigurada() });
+});
 
 // Valida los identificadores de una ficha y lista lo que falta.
 function validarFicha(ficha) {

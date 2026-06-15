@@ -113,15 +113,44 @@
   table.reg td { padding:9px 10px; border-bottom:1px solid var(--line); }
   table.reg tbody tr:hover td { background:#f5f8fc; }
   .reg-empty { color:var(--mut); font-size:13px; display:inline-block; padding:6px 2px; }
+  /* Pantalla de login */
+  #login { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:20px;
+    background:radial-gradient(700px 420px at 82% -10%, rgba(13,99,173,.55), transparent 60%), linear-gradient(160deg,#062a4d,#0a4f8a); }
+  #login.show { display:flex; }
+  .login-card { width:100%; max-width:380px; background:#fff; border-radius:18px; padding:30px 28px;
+    box-shadow:0 26px 64px -18px rgba(0,0,0,.55); }
+  .login-card img { height:42px; display:block; margin:0 auto 16px; }
+  .login-card h2 { margin:0 0 4px; font-size:18px; color:var(--navy); text-align:center; font-weight:700; }
+  .login-card .sub { margin:0 0 18px; font-size:12.5px; color:var(--mut); text-align:center; }
+  #login label { font-size:12px; color:var(--mut); display:block; margin:10px 0 4px; }
+  #login input { width:100%; background:var(--field); color:var(--ink); border:1px solid var(--line);
+    border-radius:9px; padding:10px 11px; font-size:14px; }
+  #login input:focus { outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(0,51,102,.15); }
+  .login-card button { width:100%; margin-top:18px; padding:11px; font-size:15px; }
+  .login-err { color:var(--err); font-size:13px; min-height:18px; margin-top:10px; text-align:center; }
 </style>
 </head>
 <body>
+<div id="login">
+  <form class="login-card" id="loginForm">
+    <img src="logo-gestoria.jpg" alt="Public &amp; Private Auditores" />
+    <h2>Altas y Contratos</h2>
+    <p class="sub">Acceso restringido</p>
+    <label for="lu">Usuario</label>
+    <input type="text" id="lu" autocomplete="username" />
+    <label for="lp">Contraseña</label>
+    <input type="password" id="lp" autocomplete="current-password" />
+    <button type="submit">Entrar</button>
+    <div class="login-err" id="loginErr"></div>
+  </form>
+</div>
 <header>
   <img class="logo-img" src="logo-gestoria.jpg" alt="Public &amp; Private Auditores" />
   <span class="divider"></span>
   <div class="apptitle">Altas <span>· Afiliación y Contratos</span></div>
   <span class="pill" id="estado">…</span>
   <span class="pill">v0.1 · local</span>
+  <button class="sec" id="btnLogout" style="padding:6px 12px">Salir</button>
 </header>
 <main>
   <section class="hero">
@@ -410,7 +439,7 @@ $('#btnRegistrar').addEventListener('click', async () => {
 });
 $('#btnRefrescarReg').addEventListener('click', cargarRegistro);
 
-(async function init() {
+async function iniciarApp() {
   try {
     const e = await (await fetch('/api/estado')).json();
     TIPOS = e.tiposContrato || {};
@@ -419,6 +448,33 @@ $('#btnRefrescarReg').addEventListener('click', cargarRegistro);
   } catch { $('#estado').textContent = 'sin servidor'; }
   construirFormulario();
   cargarRegistro();
+}
+function mostrarLogin(v) {
+  $('#login').classList.toggle('show', v);
+  document.querySelector('header').style.display = v ? 'none' : '';
+  document.querySelector('main').style.display = v ? 'none' : '';
+  if (v) setTimeout(() => $('#lu').focus(), 60);
+}
+$('#loginForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('#loginErr').textContent = '';
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ usuario: $('#lu').value, password: $('#lp').value }) });
+    if (r.ok) { mostrarLogin(false); iniciarApp(); }
+    else { const j = await r.json().catch(() => ({})); $('#loginErr').textContent = j.error || 'Error de acceso.'; $('#lp').value = ''; $('#lp').focus(); }
+  } catch { $('#loginErr').textContent = 'No se pudo conectar.'; }
+});
+$('#btnLogout').addEventListener('click', async () => { try { await fetch('/api/logout', { method: 'POST' }); } catch {} $('#lp').value = ''; mostrarLogin(true); });
+// Oculta la app hasta resolver la sesion (evita parpadeo)
+document.querySelector('header').style.display = 'none';
+document.querySelector('main').style.display = 'none';
+(async function arranque() {
+  try {
+    const r = await fetch('/api/me');
+    const j = await r.json().catch(() => ({}));
+    if (r.ok || j.authConfigurada === false) { mostrarLogin(false); iniciarApp(); }
+    else { mostrarLogin(true); }
+  } catch { mostrarLogin(true); }
 })();
 </script>
 </body>
