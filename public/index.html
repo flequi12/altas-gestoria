@@ -36,6 +36,10 @@
   .ok { color:var(--ok); }
   .muted { color:var(--mut); font-size:13px; }
   .imgs { font-size:12px; color:var(--mut); margin-top:6px; }
+  .altaRow { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:14px; }
+  .altaEtq { color:var(--mut); width:150px; flex:0 0 150px; font-size:12px; }
+  .altaVal { flex:1; font-family:ui-monospace,monospace; word-break:break-word; }
+  .copyBtn { background:#223149; padding:2px 8px; font-size:12px; border-radius:6px; }
 </style>
 </head>
 <body>
@@ -66,6 +70,7 @@
     <div class="row" style="margin-top:12px">
       <button class="sec" id="btnValidar">Revalidar</button>
       <button id="btnContrata">📄 Generar Contrat@ XML</button>
+      <button class="sec" id="btnAlta">📋 Ficha portal RED</button>
     </div>
   </section>
 
@@ -74,6 +79,16 @@
     <pre id="xml" class="muted">Aún no generado.</pre>
     <div class="row" style="margin-top:10px">
       <button class="sec" id="btnDescargar" disabled>⬇ Descargar contrata.xml</button>
+    </div>
+  </section>
+
+  <section class="panel" style="grid-column:1/-1">
+    <h2>4 · Alta — ficha para el portal RED (Afiliación)</h2>
+    <p class="muted">Datos validados, listos para teclear/pegar en el portal RED Online. Pulsa cada 📋 para copiar el campo.</p>
+    <div id="altaSheet" class="muted">Pulsa «📋 Ficha portal RED» en el paso 2.</div>
+    <div class="row" style="margin-top:10px">
+      <button class="sec" id="btnCopiarAlta" disabled>📋 Copiar ficha completa (texto)</button>
+      <span class="muted" id="copiaEstado"></span>
     </div>
   </section>
 </main>
@@ -207,6 +222,59 @@ $('#btnDescargar').addEventListener('click', async () => {
   a.href = URL.createObjectURL(blob); a.download = 'contrata.xml'; a.click();
   URL.revokeObjectURL(a.href);
 });
+
+// --- Ficha para el portal RED (alta): datos validados, copiables ---
+const ALTA_SECCIONES = [
+  ['Empresa', [['Cuenta cotización (CCC)','empresa.ccc'],['CIF','empresa.cif'],['Razón social','empresa.razonSocial']]],
+  ['Trabajador', [['NAF','trabajador.naf'],['NIF/NIE','trabajador.ipf'],['Nombre','trabajador.nombre'],
+     ['1er apellido','trabajador.apellido1'],['2º apellido','trabajador.apellido2'],
+     ['F. nacimiento','trabajador.fechaNacimiento'],['Sexo','trabajador.sexo'],
+     ['Nacionalidad','trabajador.nacionalidad'],['Municipio','trabajador.municipioResidencia']]],
+  ['Alta / Contrato', [['Fecha de alta (inicio)','contrato.fechaInicio'],['Tipo de contrato','contrato.tipo'],
+     ['Jornada','contrato.jornada'],['Grupo cotización','contrato.grupoCotizacion'],
+     ['Ocupación (CNO)','contrato.ocupacion'],['Convenio','contrato.convenio'],['Categoría','contrato.categoria']]],
+];
+const ruta = (o, r) => r.split('.').reduce((a, k) => (a == null ? '' : a[k]), o);
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
+async function copiar(txt) {
+  try { await navigator.clipboard.writeText(txt); $('#copiaEstado').textContent = '✓ copiado'; }
+  catch { $('#copiaEstado').textContent = '✕ no se pudo copiar'; }
+  setTimeout(() => { $('#copiaEstado').textContent = ''; }, 1500);
+}
+function renderAlta() {
+  const f = leerFicha();
+  const cont = $('#altaSheet'); cont.innerHTML = ''; cont.classList.remove('muted');
+  for (const [titulo, campos] of ALTA_SECCIONES) {
+    const fs = document.createElement('fieldset');
+    fs.innerHTML = `<legend>${titulo}</legend>`;
+    for (const [etq, r] of campos) {
+      const v = ruta(f, r) || '';
+      const row = document.createElement('div'); row.className = 'altaRow';
+      row.innerHTML = `<span class="altaEtq">${esc(etq)}</span><span class="altaVal">${v ? esc(v) : '—'}</span>`;
+      if (v) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'copyBtn'; b.textContent = '📋'; b.title = 'Copiar';
+        b.addEventListener('click', () => copiar(v));
+        row.appendChild(b);
+      }
+      fs.appendChild(row);
+    }
+    cont.appendChild(fs);
+  }
+  $('#btnCopiarAlta').disabled = false;
+}
+function altaTexto() {
+  const f = leerFicha();
+  const nom = ['trabajador.nombre','trabajador.apellido1','trabajador.apellido2'].map((r) => ruta(f, r)).filter(Boolean).join(' ');
+  const out = ['ALTA — ' + (nom || '(sin nombre)')];
+  for (const [titulo, campos] of ALTA_SECCIONES) {
+    const lineas = campos.map(([etq, r]) => { const v = ruta(f, r); return v ? `  ${etq}: ${v}` : null; }).filter(Boolean);
+    if (lineas.length) out.push(titulo + '\n' + lineas.join('\n'));
+  }
+  return out.join('\n');
+}
+$('#btnAlta').addEventListener('click', renderAlta);
+$('#btnCopiarAlta').addEventListener('click', () => copiar(altaTexto()));
 
 (async function init() {
   try {
