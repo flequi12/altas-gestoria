@@ -41,7 +41,7 @@ ok(camposQueFaltan(fichaVacia()).length === 7, 'ficha vacia: 7 obligatorios falt
 
 grupo('Contrat@ XML - indefinido (100)');
 const f = fichaVacia();
-f.empresa.cif = 'B91222919'; f.empresa.ccc = '011141147960980';
+f.empresa.cif = 'B91222919'; f.empresa.ccc = '0111 41 1479609 80';
 f.trabajador.ipf = '38132419Y'; f.trabajador.nombre = 'MANUEL';
 f.trabajador.apellido1 = 'CHECA'; f.trabajador.apellido2 = 'ARTASU';
 f.trabajador.sexo = 'H'; f.trabajador.naf = '081032005803';
@@ -52,8 +52,9 @@ ok(xml.includes('<?xml'), 'tiene prologo XML');
 ok(xml.includes('<CONTRATOS>') && xml.includes('</CONTRATOS>'), 'raiz CONTRATOS');
 ok(xml.includes('<CONTRATO_100>'), 'elemento CONTRATO_100');
 ok(xml.includes('<CIF_NIF_EMPRESA>B91222919</CIF_NIF_EMPRESA>'), 'CIF empresa');
+ok(xml.includes('<CODIGO_CUENTA_COTIZACION>011141147960980</CODIGO_CUENTA_COTIZACION>'), 'CCC normalizado a digitos');
 ok(xml.includes('<IDENTIFICADORPFISICA>38132419Y</IDENTIFICADORPFISICA>'), 'IPF trabajador');
-ok(xml.includes('<NOMBRE_APELLIDOS>CHECA ARTASU MANUEL</NOMBRE_APELLIDOS>'), 'nombre y apellidos');
+ok(xml.includes('<NOMBRE_APELLIDOS>MANUEL CHECA ARTASU</NOMBRE_APELLIDOS>'), 'nombre y apellidos (nombre primero)');
 ok(xml.includes('<SEXO>1</SEXO>'), 'sexo H -> 1');
 ok(xml.includes('<NACIONALIDAD>724</NACIONALIDAD>'), 'nacionalidad ES -> 724');
 ok(xml.includes('<FECHA_INICIO>2026-06-15</FECHA_INICIO>'), 'fecha inicio');
@@ -73,7 +74,7 @@ const e = fichaVacia();
 e.empresa.cif = 'B91222919'; e.empresa.razonSocial = 'PEPE & CIA';
 e.trabajador.ipf = '38132419Y'; e.trabajador.nombre = 'X<Y';
 e.trabajador.apellido1 = 'Z'; e.contrato.tipo = '100'; e.contrato.fechaInicio = '2026-01-01';
-ok(construirContrataXml(e).includes('Z X&lt;Y'), 'escapa < en el contenido');
+ok(construirContrataXml(e).includes('X&lt;Y Z'), 'escapa < en el contenido');
 
 console.log(`\n=== ${pasan} OK, ${fallan} fallan ===`);
 process.exit(fallan ? 1 : 0);

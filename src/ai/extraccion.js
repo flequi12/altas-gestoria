@@ -117,10 +117,16 @@ export async function extraerFicha({ texto = '', imagenes = [] } = {}) {
       (texto || '(sin texto; usa solo las imagenes)'),
   });
 
+  const hoy = new Date().toISOString().slice(0, 10);
+  const system =
+    `${SYSTEM}\n\nLa fecha de hoy es ${hoy} (AAAA-MM-DD). Si una fecha no indica el ` +
+    'ano, asume el ano que la haga coherente con hoy (normalmente el ano en curso o ' +
+    'el proximo si el dia ya paso). Anota el supuesto en "avisos".';
+
   const cuerpo = {
     model: config.anthropic.model,
     max_tokens: 4096,
-    system: SYSTEM,
+    system,
     tools: [TOOL],
     tool_choice: { type: 'tool', name: TOOL.name },
     messages: [{ role: 'user', content }],

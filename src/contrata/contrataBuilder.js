@@ -27,12 +27,16 @@ function el(tag, valor) {
   return v === '' ? '' : `      <${tag}>${esc(v)}</${tag}>\n`;
 }
 
+// El Contrat@ usa NOMBRE_APELLIDOS con el nombre primero (confirmado contra un
+// Contrat@ real: "NAYARA PIRES ANDRES").
 function nombreApellidos(t) {
-  return [t.apellido1, t.apellido2, t.nombre]
+  return [t.nombre, t.apellido1, t.apellido2]
     .map((x) => String(x || '').trim())
     .filter(Boolean)
     .join(' ');
 }
+
+const soloDigitos = (v) => String(v ?? '').replace(/\D/g, '');
 
 // Construye un bloque <CONTRATO_xxx> a partir de una ficha canonica.
 export function construirContratoElemento(ficha) {
@@ -47,7 +51,7 @@ export function construirContratoElemento(ficha) {
 
   s += '    <DATOS_EMPRESA>\n';
   s += el('CIF_NIF_EMPRESA', e.cif);
-  s += el('CODIGO_CUENTA_COTIZACION', e.ccc);
+  s += el('CODIGO_CUENTA_COTIZACION', soloDigitos(e.ccc));
   s += '    </DATOS_EMPRESA>\n';
 
   s += '    <DATOS_TRABAJADOR>\n';
