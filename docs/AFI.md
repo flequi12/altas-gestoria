@@ -56,10 +56,22 @@ Envoltura: **`ETI`** (etiqueta inicio, cabecera del envío: sintaxis `AFI9`, pro
 | Fecha de nacimiento | 41 | 8 | |
 | Sexo | 49 | 1 | 1=hombre, 2=mujer |
 
-## PENDIENTE para completar el generador
-Falta el documento **"Tablas y Formatos Comunes"** (Sistema RED) para fijar:
-- **T-7 = código de Acción de ALTA** (y baja/variación).
-- **Formato de fecha "4"** (orden AAAAMMDD / DDMMAAAA), **T-18** grupo de cotización, **T-12** país, **T-19** clave de contrato, **T-3** tipo id.
-- Construcción exacta de la cabecera **ETI** (sintaxis `AFI9`, identificador de programa, clave de autorización, referencia) y de **ETF**.
+## Formatos comunes (CONFIRMADOS — `Indice+Tablas+y+Formatos+Comunes`)
+- **Fecha (formato 4) = `AAAAMMDD`**, 8 posiciones.
+- **Hora** = `HHMM`; **Año** = `AAAA`.
+- **IPF** (máx 14): ajuste a la **derecha**, relleno de **ceros por la izquierda**; NIF → último carácter letra; NIE → primer y último carácter letras. Ej. `54220712Y` → `0000054220712Y`.
+- **Código de empresario** (14): igual, ajuste derecha + ceros izq; CIF empieza por letra, último letra o número.
+- **NAF** (máx 12): `PP0NNNNNNNNN` (afiliación anterior a 03/1992) o `PP1NNNNNNNNN` (posterior).
+- **Decimal** (máx 11): ajuste izquierda, ceros a la derecha (ej. 0,25 → `25000000000`).
 
-Con eso se construye el generador de petición y se valida byte a byte.
+## PENDIENTE para completar el generador
+El "Índice de Tablas y Formatos" da los formatos pero **NO los valores de las tablas**
+(es una guía: dice qué mensaje/segmento usa cada tabla, no el repertorio de claves).
+Falta, por tanto:
+- **El valor de T-7 = Acción de ALTA** (y baja/variación) — usado en `EMP`(450) y `FAB`.
+- Construcción exacta de la cabecera **`ETI`** (sintaxis `AFI9`, identificador de programa `WSxx`, clave de autorización, referencia/contador) y **`ETF`**.
+
+**Vía más fiable para cerrarlo**: un **AFI de PETICIÓN real** (el `.msj`/`.AFI` que SILTRA
+**envió** a la TGSS en una remesa de afiliación — carpeta de envíos `SVA\MsjEnv`). Con él +
+este diseño se reproduce **byte a byte** (la acción T-7 y la cabecera ETI salen del propio
+fichero). Alternativa: el documento completo de **"Tablas de códigos"** (no el índice).
