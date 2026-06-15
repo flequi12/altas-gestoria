@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+
+# Entorno y secretos
+.env
+*.env
+!.env.example
+
+# Datos sensibles / ficheros reales de clientes (RGPD) - NUNCA al repo
+uploads/
+salida/
+muestras/
+*.ITA
+*.ita
+*.msj
+*.t01
+*.pdf
+*.xml
+!ejemplos/*.plantilla.xml
+
+# Sistema
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,18 @@
+{
+  "name": "altas-gestoria",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bandeja de altas: intake caótico (email/WhatsApp/foto/llamada) -> extraccion IA -> validacion -> Contrat@ XML, para alimentar el flujo de la gestoria (Sistema RED + NominaSol).",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js",
+    "test": "node test/run.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

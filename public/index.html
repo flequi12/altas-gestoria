@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Altas Gestoría</title>
+<style>
+  :root { --bg:#0e1726; --panel:#152033; --ink:#e7edf6; --mut:#93a4bd; --line:#27344b;
+          --acc:#2f81f7; --ok:#2ea043; --warn:#d29922; --err:#f85149; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
+  header h1 { font-size:17px; margin:0; }
+  .pill { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--mut); }
+  main { max-width:1100px; margin:0 auto; padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:900px){ main{ grid-template-columns:1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .panel h2 { font-size:14px; margin:0 0 12px; color:var(--mut); text-transform:uppercase; letter-spacing:.04em; }
+  textarea { width:100%; min-height:170px; resize:vertical; background:#0b1320; color:var(--ink);
+             border:1px solid var(--line); border-radius:8px; padding:10px; font:14px/1.5 ui-monospace,monospace; }
+  input[type=text], select { width:100%; background:#0b1320; color:var(--ink); border:1px solid var(--line);
+             border-radius:7px; padding:7px 9px; }
+  label { display:block; font-size:12px; color:var(--mut); margin:8px 0 3px; }
+  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:9px 14px; font-weight:600; cursor:pointer; }
+  button.sec { background:#223149; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+  fieldset { border:1px solid var(--line); border-radius:9px; margin:0 0 12px; padding:8px 12px 12px; }
+  legend { color:var(--mut); font-size:12px; padding:0 6px; }
+  pre { background:#0b1320; border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; max-height:340px; white-space:pre-wrap; }
+  .avisos { list-style:none; padding:0; margin:8px 0 0; }
+  .avisos li { font-size:13px; padding:4px 0; }
+  .avisos .warn::before{ content:"⚠ "; color:var(--warn); }
+  .avisos .err::before{ content:"✕ "; color:var(--err); }
+  .ok { color:var(--ok); }
+  .muted { color:var(--mut); font-size:13px; }
+  .imgs { font-size:12px; color:var(--mut); margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🗂️ Altas Gestoría</h1>
+  <span class="pill" id="estado">…</span>
+  <span class="pill">Fase 1 · intake + IA + Contrat@</span>
+</header>
+<main>
+  <section class="panel">
+    <h2>1 · Entrada (el caos)</h2>
+    <p class="muted">Pega el email / WhatsApp / notas de la llamada y/o sube la foto del DNI o el contrato.</p>
+    <textarea id="texto" placeholder="Ej: 'Te paso el alta de María López... DNI 38132419Y, empieza el lunes a jornada completa de camarera...'"></textarea>
+    <div class="row" style="margin-top:10px">
+      <input type="file" id="files" accept="image/*" multiple />
+    </div>
+    <div class="imgs" id="imgsInfo"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="btnExtraer">✨ Extraer con IA</button>
+      <span class="muted" id="extEstado"></span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2 · Ficha (revisa y corrige)</h2>
+    <form id="ficha"></form>
+    <ul class="avisos" id="avisos"></ul>
+    <div class="row" style="margin-top:12px">
+      <button class="sec" id="btnValidar">Revalidar</button>
+      <button id="btnContrata">📄 Generar Contrat@ XML</button>
+    </div>
+  </section>
+
+  <section class="panel" style="grid-column:1/-1">
+    <h2>3 · Contrat@ XML</h2>
+    <pre id="xml" class="muted">Aún no generado.</pre>
+    <div class="row" style="margin-top:10px">
+      <button class="sec" id="btnDescargar" disabled>⬇ Descargar contrata.xml</button>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+
+// Definicion de campos del formulario (espejo de la ficha canonica).
+const SECCIONES = [
+  ['empresa', 'Empresa', [['cif','CIF'],['ccc','Cuenta Cotización (CCC)'],['razonSocial','Razón social']]],
+  ['trabajador', 'Trabajador', [['ipf','NIF / NIE'],['naf','NAF'],['nombre','Nombre'],['apellido1','1er apellido'],
+     ['apellido2','2º apellido'],['sexo','Sexo (H/M)'],['fechaNacimiento','Nacimiento (AAAA-MM-DD)'],
+     ['nacionalidad','Nacionalidad'],['municipioResidencia','Municipio'],['telefono','Teléfono'],['email','Email']]],
+  ['contrato', 'Contrato', [['tipo','Tipo (código)','select'],['fechaInicio','Inicio (AAAA-MM-DD)'],
+     ['fechaFin','Fin (AAAA-MM-DD)'],['jornada','Jornada'],['grupoCotizacion','Grupo cotización'],
+     ['ocupacion','Ocupación / CNO'],['categoria','Categoría'],['convenio','Convenio'],['salarioBruto','Salario bruto']]],
+];
+
+let TIPOS = {};
+
+function construirFormulario() {
+  const form = $('#ficha');
+  form.innerHTML = '';
+  for (const [sec, titulo, campos] of SECCIONES) {
+    const fs = document.createElement('fieldset');
+    fs.innerHTML = `<legend>${titulo}</legend>`;
+    const grid = document.createElement('div'); grid.className = 'grid2';
+    for (const [campo, etiqueta, tipo] of campos) {
+      const wrap = document.createElement('div');
+      const id = `f_${sec}_${campo}`;
+      if (tipo === 'select') {
+        const opts = ['<option value="">—</option>']
+          .concat(Object.entries(TIPOS).map(([k,v]) => `<option value="${k}">${k} · ${v.desc}</option>`));
+        wrap.innerHTML = `<label for="${id}">${etiqueta}</label><select id="${id}" data-sec="${sec}" data-campo="${campo}">${opts.join('')}</select>`;
+      } else {
+        wrap.innerHTML = `<label for="${id}">${etiqueta}</label><input type="text" id="${id}" data-sec="${sec}" data-campo="${campo}" />`;
+      }
+      grid.appendChild(wrap);
+    }
+    fs.appendChild(grid);
+    form.appendChild(fs);
+  }
+}
+
+function leerFicha() {
+  const ficha = { empresa:{}, trabajador:{}, contrato:{} };
+  document.querySelectorAll('#ficha [data-sec]').forEach(el => {
+    ficha[el.dataset.sec][el.dataset.campo] = el.value.trim();
+  });
+  return ficha;
+}
+
+function escribirFicha(ficha) {
+  document.querySelectorAll('#ficha [data-sec]').forEach(el => {
+    const v = (ficha[el.dataset.sec] || {})[el.dataset.campo];
+    el.value = v == null ? '' : v;
+  });
+}
+
+function pintarValidacion(val) {
+  const ul = $('#avisos'); ul.innerHTML = '';
+  if (!val) return;
+  for (const f of (val.faltan || [])) {
+    const li = document.createElement('li'); li.className = 'warn'; li.textContent = `Falta: ${f}`; ul.appendChild(li);
+  }
+  for (const a of (val.avisos || [])) {
+    const li = document.createElement('li'); li.className = 'err'; li.textContent = a; ul.appendChild(li);
+  }
+  if (!ul.children.length) { const li = document.createElement('li'); li.className='ok'; li.textContent='✓ Sin avisos.'; ul.appendChild(li); }
+}
+
+async function leerImagenes() {
+  const files = [...$('#files').files];
+  const out = [];
+  for (const f of files) {
+    const data = await new Promise((res) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(',')[1]);
+      r.readAsDataURL(f);
+    });
+    out.push({ media_type: f.type, data });
+  }
+  return out;
+}
+
+$('#files').addEventListener('change', () => {
+  const n = $('#files').files.length;
+  $('#imgsInfo').textContent = n ? `${n} imagen(es) adjunta(s).` : '';
+});
+
+$('#btnExtraer').addEventListener('click', async () => {
+  $('#extEstado').textContent = 'Extrayendo…';
+  $('#btnExtraer').disabled = true;
+  try {
+    const imagenes = await leerImagenes();
+    const r = await fetch('/api/extraer', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ texto: $('#texto').value, imagenes }),
+    });
+    const j = await r.json();
+    if (!r.ok) { $('#extEstado').textContent = '✕ ' + (j.error || 'Error'); return; }
+    escribirFicha(j.ficha);
+    pintarValidacion(j.validacion);
+    const extra = (j.ficha._meta?.avisos || []);
+    $('#extEstado').textContent = '✓ Extraído' + (extra.length ? ` · ${extra.length} nota(s) de la IA` : '');
+    if (extra.length) { for (const a of extra){ const li=document.createElement('li'); li.className='warn'; li.textContent='IA: '+a; $('#avisos').appendChild(li);} }
+  } catch (e) {
+    $('#extEstado').textContent = '✕ ' + e.message;
+  } finally { $('#btnExtraer').disabled = false; }
+});
+
+$('#btnValidar').addEventListener('click', async () => {
+  const r = await fetch('/api/validar', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ ficha: leerFicha() }) });
+  const j = await r.json();
+  pintarValidacion(j.validacion);
+});
+
+$('#btnContrata').addEventListener('click', async () => {
+  const r = await fetch('/api/contrata', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ fichas:[leerFicha()] }) });
+  const j = await r.json();
+  if (!r.ok) { $('#xml').textContent = '✕ ' + (j.error || 'Error'); return; }
+  $('#xml').textContent = j.xml;
+  $('#xml').classList.remove('muted');
+  $('#btnDescargar').disabled = false;
+});
+
+$('#btnDescargar').addEventListener('click', async () => {
+  const r = await fetch('/api/contrata', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ fichas:[leerFicha()], descargar:true }) });
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'contrata.xml'; a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+(async function init() {
+  try {
+    const e = await (await fetch('/api/estado')).json();
+    TIPOS = e.tiposContrato || {};
+    $('#estado').textContent = e.iaConfigurada ? `IA ✓ ${e.modelo}` : 'IA ✕ (sin clave)';
+    $('#estado').style.color = e.iaConfigurada ? 'var(--ok)' : 'var(--err)';
+  } catch { $('#estado').textContent = 'sin servidor'; }
+  construirFormulario();
+})();
+</script>
+</body>
+</html>
