@@ -21,12 +21,11 @@ export function tipoContratoInfo(codigo) {
   return TIPOS_CONTRATO[String(codigo || '').trim()] || null;
 }
 
-// Sexo -> codigo SEPE. PENDIENTE confirmar contra tabla oficial (TEDSEXO):
-// se usa el habitual 1=varon, 6=mujer; centralizado para corregir en un sitio.
+// Sexo -> codigo. Confirmado contra Contrat@ real y spec AFI: 1=hombre, 2=mujer.
 export function sexoCodigo(sexo) {
   const s = String(sexo || '').trim().toUpperCase();
   if (s === 'H' || s === 'V') return '1';   // hombre / varon
-  if (s === 'M' || s === 'F') return '6';   // mujer
+  if (s === 'M' || s === 'F') return '2';   // mujer
   return '';
 }
 

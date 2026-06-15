@@ -31,7 +31,10 @@ export function fichaVacia() {
       jornada: '',        // 'completa' | 'parcial'
       coeficienteParcial: '', // % de jornada si parcial
       grupoCotizacion: '',
-      ocupacion: '',      // CNO / codigo de ocupacion
+      ocupacion: '',      // codigo CNO (4 digitos)
+      nivelFormativo: '', // codigo nivel formativo
+      tipoJornada: '',    // D/S/M/A (si parcial)
+      horasJornada: '',   // horas de jornada (si parcial)
       categoria: '',
       convenio: '',
       salarioBruto: '',
