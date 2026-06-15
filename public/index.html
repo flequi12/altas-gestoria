@@ -89,6 +89,7 @@
   .copyBtn { background:#fff; border:1px solid var(--line); padding:3px 9px; font-size:13px;
     border-radius:8px; box-shadow:none; color:var(--navy); }
   .copyBtn:hover:not(:disabled) { background:var(--navy); color:#fff; border-color:transparent; transform:none; }
+  .copyBtn.del:hover:not(:disabled) { background:var(--err); color:#fff; border-color:transparent; }
   ::-webkit-scrollbar { width:10px; height:10px; }
   ::-webkit-scrollbar-thumb { background:rgba(0,51,102,.2); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
   ::-webkit-scrollbar-thumb:hover { background:rgba(0,51,102,.35); background-clip:padding-box; }
@@ -119,7 +120,7 @@
   #login.show { display:flex; }
   .login-card { width:100%; max-width:380px; background:#fff; border-radius:18px; padding:30px 28px;
     box-shadow:0 26px 64px -18px rgba(0,0,0,.55); }
-  .login-card img { height:42px; display:block; margin:0 auto 16px; }
+  .login-card img { display:block; margin:0 auto 16px; width:100%; max-width:240px; height:auto; }
   .login-card h2 { margin:0 0 4px; font-size:18px; color:var(--navy); text-align:center; font-weight:700; }
   .login-card .sub { margin:0 0 18px; font-size:12.5px; color:var(--mut); text-align:center; }
   #login label { font-size:12px; color:var(--mut); display:block; margin:10px 0 4px; }
@@ -217,7 +218,7 @@
   <section class="panel" style="grid-column:1/-1">
     <h2><span class="step">5</span>Entradas registradas</h2>
     <div class="row" style="justify-content:space-between">
-      <p class="muted" style="margin:0">Las altas que vas procesando quedan guardadas aquí. Pulsa «Cargar» para reabrir una en el formulario.</p>
+      <p class="muted" style="margin:0">Cada vez que generas un Contrat@ o la ficha del portal RED, el alta se guarda aquí automáticamente. «Cargar» la reabre en el formulario; «🗑» la borra.</p>
       <button class="sec" id="btnRefrescarReg">↻ Actualizar</button>
     </div>
     <div id="registroTabla" style="margin-top:10px"><span class="reg-empty">Cargando…</span></div>
@@ -344,6 +345,7 @@ $('#btnContrata').addEventListener('click', async () => {
   $('#xml').textContent = j.xml;
   $('#xml').classList.remove('muted');
   $('#btnDescargar').disabled = false;
+  autoRegistrar();
 });
 
 $('#btnDescargar').addEventListener('click', async () => {
@@ -404,7 +406,7 @@ function altaTexto() {
   }
   return out.join('\n');
 }
-$('#btnAlta').addEventListener('click', renderAlta);
+$('#btnAlta').addEventListener('click', () => { renderAlta(); autoRegistrar(); });
 $('#btnCopiarAlta').addEventListener('click', () => copiar(altaTexto()));
 
 // --- Registro de entradas (persistente) ---
@@ -419,14 +421,36 @@ async function cargarRegistro() {
     for (const e of arr) {
       REGISTRO[e.id] = e.ficha;
       const f = String(e.fecha || '').slice(0, 16).replace('T', ' ');
-      html += `<tr><td>${esc(f)}</td><td>${esc(e.trabajador || '—')}</td><td>${esc(e.ipf || '—')}</td><td>${esc(e.empresaCif || '—')}</td><td>${esc(e.tipo || '—')}</td><td><button class="copyBtn" data-id="${esc(e.id)}">Cargar</button></td></tr>`;
+      html += `<tr><td>${esc(f)}</td><td>${esc(e.trabajador || '—')}</td><td>${esc(e.ipf || '—')}</td><td>${esc(e.empresaCif || '—')}</td><td>${esc(e.tipo || '—')}</td><td style="white-space:nowrap"><button class="copyBtn" data-id="${esc(e.id)}">Cargar</button> <button class="copyBtn del" data-del="${esc(e.id)}" title="Borrar entrada">🗑</button></td></tr>`;
     }
     cont.innerHTML = html + '</tbody></table>';
     cont.querySelectorAll('button[data-id]').forEach((b) => b.addEventListener('click', () => {
       const fi = REGISTRO[b.dataset.id];
       if (fi) { escribirFicha(fi); $('#avisos').innerHTML = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); }
     }));
+    cont.querySelectorAll('button[data-del]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('¿Borrar esta entrada del registro?')) return;
+      try {
+        const r = await fetch('/api/entradas/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' });
+        if (r.ok) cargarRegistro();
+        else { const j = await r.json().catch(() => ({})); alert(j.error || 'No se pudo borrar.'); }
+      } catch (e) { alert('No se pudo borrar: ' + e.message); }
+    }));
   } catch { cont.innerHTML = '<span class="reg-empty">Error al cargar el registro.</span>'; }
+}
+function fichaIdentificable(f) {
+  const t = f.trabajador || {}, e = f.empresa || {};
+  return Boolean((t.ipf || '').trim() || ((t.nombre || '').trim() && (e.cif || '').trim()));
+}
+// Guarda en el registro sin intervencion (al generar Contrat@ o la ficha del portal RED).
+// El backend deduplica por NIF+CIF+fecha de alta, asi que regenerar no crea duplicados.
+async function autoRegistrar() {
+  const f = leerFicha();
+  if (!fichaIdentificable(f)) return;
+  try {
+    const r = await fetch('/api/entradas', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ficha: f }) });
+    if (r.ok) { $('#regEstado').textContent = '💾 Guardada en el registro'; cargarRegistro(); setTimeout(() => { $('#regEstado').textContent = ''; }, 2500); }
+  } catch {}
 }
 $('#btnRegistrar').addEventListener('click', async () => {
   $('#regEstado').textContent = 'Guardando…';

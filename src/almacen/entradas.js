@@ -42,19 +42,46 @@ export function resumenEntrada(ficha) {
   };
 }
 
+// Identidad de un alta para deduplicar (NIF/NIE + CIF empresa + fecha de alta).
+function claveDedup(o) {
+  return [o.ipf, o.empresaCif, o.fechaInicio].map((x) => String(x || '').trim().toUpperCase()).join('|');
+}
+
 export async function listarEntradas() {
   return leer();
 }
 
 export async function guardarEntrada(ficha, fechaIso) {
   const arr = await leer();
-  const entrada = {
-    id: crypto.randomUUID(),
-    fecha: fechaIso || new Date().toISOString(),
-    ...resumenEntrada(ficha),
-    ficha,
-  };
+  const resumen = resumenEntrada(ficha);
+  const clave = claveDedup(resumen);
+  const identificable = clave.replace(/\|/g, '') !== '';
+  const fecha = fechaIso || new Date().toISOString();
+
+  // Si ya existe una entrada con la misma identidad, se actualiza y sube arriba
+  // (evita duplicados al autoguardar en cada generacion del mismo alta).
+  if (identificable) {
+    const i = arr.findIndex((e) => claveDedup(e) === clave);
+    if (i >= 0) {
+      const [existente] = arr.splice(i, 1);
+      const actualizada = { ...existente, fecha, ...resumen, ficha };
+      arr.unshift(actualizada);
+      await escribir(arr);
+      return actualizada;
+    }
+  }
+
+  const entrada = { id: crypto.randomUUID(), fecha, ...resumen, ficha };
   arr.unshift(entrada); // mas reciente primero
   await escribir(arr);
   return entrada;
+}
+
+export async function borrarEntrada(id) {
+  const arr = await leer();
+  const i = arr.findIndex((e) => e.id === id);
+  if (i < 0) return false;
+  arr.splice(i, 1);
+  await escribir(arr);
+  return true;
 }

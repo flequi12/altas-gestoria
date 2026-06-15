@@ -8,7 +8,7 @@ import { construirContrataXml } from './contrata/contrataBuilder.js';
 import { TIPOS_CONTRATO } from './contrata/codigos.js';
 import { fichaVacia, camposQueFaltan } from './dominio/esquema.js';
 import { validarDocumento, validarNafFormato } from './validadores/identidad.js';
-import { listarEntradas, guardarEntrada } from './almacen/entradas.js';
+import { listarEntradas, guardarEntrada, borrarEntrada } from './almacen/entradas.js';
 import { requireAuth, comprobarCredenciales, ponerCookieSesion, borrarCookieSesion, sesionDe, authConfigurada } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -120,6 +120,13 @@ app.post('/api/entradas', async (req, res) => {
     if (!ficha) return res.status(400).json({ error: 'Falta la ficha.' });
     res.json(await guardarEntrada(ficha));
   } catch (e) { console.error('entradas save:', e.message); res.status(500).json({ error: 'No se pudo guardar.' }); }
+});
+app.delete('/api/entradas/:id', async (req, res) => {
+  try {
+    const ok = await borrarEntrada(req.params.id);
+    if (!ok) return res.status(404).json({ error: 'Entrada no encontrada.' });
+    res.json({ ok: true });
+  } catch (e) { console.error('entradas del:', e.message); res.status(500).json({ error: 'No se pudo borrar.' }); }
 });
 
 app.listen(config.port, () => {
