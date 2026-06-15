@@ -6,11 +6,12 @@
 <title>Altas Gestoría</title>
 <style>
   :root {
-    --bg:#0a0e1a; --bg2:#0e1426; --field:#0b1120;
-    --panel:rgba(255,255,255,.025); --panel-brd:rgba(255,255,255,.08); --line:rgba(255,255,255,.08);
-    --ink:#eef2fb; --mut:#8a97b4; --acc:#6366f1; --acc2:#8b5cf6;
-    --ok:#34d399; --warn:#fbbf24; --err:#f87171;
-    --shadow:0 14px 38px -16px rgba(0,0,0,.6);
+    --bg:#eef1f6; --surface:#ffffff; --field:#f7f9fc;
+    --navy:#003366; --navy2:#0a4f8a; --red:#c1121f;
+    --acc:#003366; --acc2:#0a4f8a;
+    --ink:#1f2a37; --mut:#64748b; --line:#e2e8f0; --panel-brd:#e6eaf0;
+    --ok:#15803d; --warn:#b45309; --err:#b91c1c;
+    --shadow:0 1px 2px rgba(16,24,40,.04), 0 10px 26px -14px rgba(16,24,40,.18);
   }
   * { box-sizing:border-box; }
   html { scroll-behavior:smooth; }
@@ -18,90 +19,86 @@
     margin:0; color:var(--ink); -webkit-font-smoothing:antialiased; min-height:100vh;
     font:15px/1.55 -apple-system,system-ui,"Segoe UI",Roboto,Inter,sans-serif;
     background:
-      radial-gradient(900px 520px at 88% -12%, rgba(139,92,246,.18), transparent 60%),
-      radial-gradient(820px 520px at -5% -5%, rgba(99,102,241,.16), transparent 55%),
-      linear-gradient(180deg,var(--bg2),var(--bg));
+      radial-gradient(900px 480px at 92% -10%, rgba(0,51,102,.06), transparent 60%),
+      linear-gradient(180deg,#f6f8fb,var(--bg));
     background-attachment:fixed;
   }
-  ::selection { background:rgba(99,102,241,.35); }
+  ::selection { background:rgba(0,51,102,.18); }
   header {
-    position:sticky; top:0; z-index:5; padding:13px 24px; display:flex; align-items:center; gap:14px;
-    background:rgba(10,14,26,.7); backdrop-filter:blur(14px); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:5; padding:10px 24px; display:flex; align-items:center; gap:16px;
+    background:rgba(255,255,255,.9); backdrop-filter:blur(12px);
+    border-top:3px solid var(--red); border-bottom:1px solid var(--line);
   }
-  .brand { display:flex; align-items:center; gap:12px; }
-  .logo { width:38px; height:38px; display:grid; place-items:center; font-size:20px; border-radius:11px;
-    background:linear-gradient(135deg,var(--acc),var(--acc2)); box-shadow:0 6px 18px -6px rgba(99,102,241,.75); }
-  header h1 { font-size:16px; margin:0; font-weight:650; letter-spacing:-.01em; }
-  .tag { font-size:11.5px; color:var(--mut); }
+  .logo-img { height:40px; width:auto; display:block; }
+  .divider { width:1px; height:30px; background:var(--line); }
+  .apptitle { font-weight:700; color:var(--navy); font-size:16px; letter-spacing:-.01em; }
+  .apptitle span { color:var(--mut); font-weight:500; font-size:13px; }
   .pill { font-size:12px; padding:4px 11px; border-radius:999px; border:1px solid var(--line);
-    color:var(--mut); background:rgba(255,255,255,.03); white-space:nowrap; }
+    color:var(--mut); background:#fff; white-space:nowrap; }
   header #estado { margin-left:auto; }
+  @media (max-width:600px){ .apptitle span,.divider{ display:none; } .logo-img{ height:32px; } }
   main { max-width:1140px; margin:0 auto; padding:24px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   @media (max-width:900px){ main{ grid-template-columns:1fr; padding:16px; } }
-  .panel { background:var(--panel); border:1px solid var(--panel-brd); border-radius:18px; padding:20px;
-    box-shadow:var(--shadow); backdrop-filter:blur(6px); transition:border-color .2s; }
-  .panel:hover { border-color:rgba(255,255,255,.15); }
-  .panel h2 { font-size:15px; margin:0 0 14px; color:var(--ink); font-weight:600;
+  .panel { background:var(--surface); border:1px solid var(--panel-brd); border-radius:16px; padding:20px;
+    box-shadow:var(--shadow); transition:box-shadow .2s; }
+  .panel:hover { box-shadow:0 2px 4px rgba(16,24,40,.05),0 16px 34px -16px rgba(16,24,40,.22); }
+  .panel h2 { font-size:15px; margin:0 0 14px; color:var(--navy); font-weight:700;
     display:flex; align-items:center; gap:11px; letter-spacing:-.01em; }
   .step { width:26px; height:26px; flex:0 0 26px; display:grid; place-items:center; border-radius:50%;
-    font-size:13px; font-weight:700; color:#fff; background:linear-gradient(135deg,var(--acc),var(--acc2));
-    box-shadow:0 4px 12px -3px rgba(99,102,241,.6); }
+    font-size:13px; font-weight:700; color:#fff; background:linear-gradient(135deg,var(--navy),var(--navy2));
+    box-shadow:0 3px 8px -2px rgba(0,51,102,.5); }
   textarea { width:100%; min-height:175px; resize:vertical; background:var(--field); color:var(--ink);
     border:1px solid var(--line); border-radius:11px; padding:12px;
     font:13.5px/1.55 ui-monospace,"SF Mono",monospace; transition:border-color .15s,box-shadow .15s; }
-  input[type=text], select { width:100%; background:var(--field); color:var(--ink); border:1px solid var(--line);
+  input[type=text], select { width:100%; background:#fff; color:var(--ink); border:1px solid var(--line);
     border-radius:9px; padding:8px 10px; font-size:14px; transition:border-color .15s,box-shadow .15s; }
-  textarea:focus, input[type=text]:focus, select:focus { outline:none; border-color:var(--acc);
-    box-shadow:0 0 0 3px rgba(99,102,241,.22); }
+  textarea:focus, input[type=text]:focus, select:focus { outline:none; border-color:var(--navy);
+    box-shadow:0 0 0 3px rgba(0,51,102,.15); }
   input[type=file] { font-size:13px; color:var(--mut); }
-  input[type=file]::file-selector-button { background:rgba(255,255,255,.06); color:var(--ink);
+  input[type=file]::file-selector-button { background:#fff; color:var(--navy);
     border:1px solid var(--line); border-radius:8px; padding:7px 12px; margin-right:10px; cursor:pointer; font-weight:600; }
   label { display:block; font-size:11.5px; color:var(--mut); margin:9px 0 4px; }
-  button { background:linear-gradient(135deg,var(--acc),var(--acc2)); color:#fff; border:0; border-radius:10px;
+  button { background:linear-gradient(135deg,var(--navy),var(--navy2)); color:#fff; border:0; border-radius:10px;
     padding:9px 16px; font-weight:600; font-size:14px; cursor:pointer;
-    box-shadow:0 6px 16px -8px rgba(99,102,241,.8); transition:transform .12s,box-shadow .2s,opacity .2s,background .2s; }
-  button:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 11px 24px -8px rgba(99,102,241,.9); }
+    box-shadow:0 4px 12px -4px rgba(0,51,102,.5); transition:transform .12s,box-shadow .2s,opacity .2s,background .2s; }
+  button:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 18px -6px rgba(0,51,102,.55); }
   button:active:not(:disabled) { transform:translateY(0); }
-  button.sec { background:rgba(255,255,255,.06); border:1px solid var(--line); box-shadow:none; color:var(--ink); }
-  button.sec:hover:not(:disabled) { background:rgba(255,255,255,.1); }
-  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.sec { background:#fff; border:1px solid var(--line); box-shadow:none; color:var(--navy); }
+  button.sec:hover:not(:disabled) { background:#f1f5fb; border-color:#cbd5e1; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; }
   @media (max-width:520px){ .grid2{ grid-template-columns:1fr; } }
-  fieldset { border:1px solid var(--line); border-radius:13px; margin:0 0 14px; padding:6px 14px 14px;
-    background:rgba(255,255,255,.015); }
-  legend { color:var(--mut); font-size:11px; padding:0 7px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
-  pre { background:var(--field); border:1px solid var(--line); border-radius:11px; padding:14px;
-    overflow:auto; max-height:360px; white-space:pre-wrap; font:12.5px/1.5 ui-monospace,monospace; color:#cdd6ea; }
+  fieldset { border:1px solid var(--line); border-radius:12px; margin:0 0 14px; padding:6px 14px 14px;
+    background:#fbfcfe; }
+  legend { color:var(--navy); font-size:11px; padding:0 7px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+  pre { background:#0d2236; border:1px solid #14304a; border-radius:11px; padding:14px;
+    overflow:auto; max-height:360px; white-space:pre-wrap; font:12.5px/1.5 ui-monospace,monospace; color:#cfe0f2; }
   .avisos { list-style:none; padding:0; margin:10px 0 0; }
   .avisos li { font-size:13px; padding:4px 0; color:var(--mut); }
   .avisos .warn::before{ content:"⚠"; color:var(--warn); margin-right:7px; }
-  .avisos .err { color:#fca5a5; }
+  .avisos .err { color:var(--err); }
   .avisos .err::before{ content:"✕"; color:var(--err); margin-right:7px; }
   .ok { color:var(--ok); }
   .muted { color:var(--mut); font-size:13px; }
   .imgs { font-size:12px; color:var(--mut); margin-top:8px; }
   .altaRow { display:flex; align-items:center; gap:10px; padding:6px; font-size:14px; border-radius:8px; transition:background .12s; }
-  .altaRow:hover { background:rgba(255,255,255,.04); }
+  .altaRow:hover { background:#f1f5fb; }
   .altaEtq { color:var(--mut); width:170px; flex:0 0 170px; font-size:12px; }
-  .altaVal { flex:1; font-family:ui-monospace,monospace; word-break:break-word; }
-  .copyBtn { background:rgba(255,255,255,.06); border:1px solid var(--line); padding:3px 9px; font-size:13px;
-    border-radius:8px; box-shadow:none; color:var(--ink); }
-  .copyBtn:hover:not(:disabled) { background:linear-gradient(135deg,var(--acc),var(--acc2)); border-color:transparent; transform:none; }
+  .altaVal { flex:1; font-family:ui-monospace,monospace; word-break:break-word; color:var(--ink); }
+  .copyBtn { background:#fff; border:1px solid var(--line); padding:3px 9px; font-size:13px;
+    border-radius:8px; box-shadow:none; color:var(--navy); }
+  .copyBtn:hover:not(:disabled) { background:var(--navy); color:#fff; border-color:transparent; transform:none; }
   ::-webkit-scrollbar { width:10px; height:10px; }
-  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
-  ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.22); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,51,102,.2); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(0,51,102,.35); background-clip:padding-box; }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">
-    <span class="logo">🗂️</span>
-    <div>
-      <h1>Altas Gestoría</h1>
-      <div class="tag">Intake · IA · Contrat@ · Alta</div>
-    </div>
-  </div>
+  <img class="logo-img" src="logo-gestoria.jpg" alt="Public &amp; Private Auditores" />
+  <span class="divider"></span>
+  <div class="apptitle">Altas <span>· Afiliación y Contratos</span></div>
   <span class="pill" id="estado">…</span>
   <span class="pill">v0.1 · local</span>
 </header>
