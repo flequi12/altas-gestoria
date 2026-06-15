@@ -10,6 +10,7 @@ docs
 *.md
 tmp_*.mjs
 uploads
+data
 salida
 muestras
 *.ITA

@@ -8,6 +8,7 @@ node_modules/
 
 # Datos sensibles / ficheros reales de clientes (RGPD) - NUNCA al repo
 uploads/
+data/
 salida/
 muestras/
 *.ITA

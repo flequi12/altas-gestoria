@@ -8,6 +8,7 @@ import { construirContrataXml } from './contrata/contrataBuilder.js';
 import { TIPOS_CONTRATO } from './contrata/codigos.js';
 import { fichaVacia, camposQueFaltan } from './dominio/esquema.js';
 import { validarDocumento, validarNafFormato } from './validadores/identidad.js';
+import { listarEntradas, guardarEntrada } from './almacen/entradas.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -84,6 +85,19 @@ app.post('/api/contrata', (req, res) => {
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// Registro persistente de entradas (altas procesadas)
+app.get('/api/entradas', async (_req, res) => {
+  try { res.json(await listarEntradas()); }
+  catch (e) { console.error('entradas list:', e.message); res.status(500).json({ error: 'No se pudo leer el registro.' }); }
+});
+app.post('/api/entradas', async (req, res) => {
+  try {
+    const ficha = req.body?.ficha;
+    if (!ficha) return res.status(400).json({ error: 'Falta la ficha.' });
+    res.json(await guardarEntrada(ficha));
+  } catch (e) { console.error('entradas save:', e.message); res.status(500).json({ error: 'No se pudo guardar.' }); }
 });
 
 app.listen(config.port, () => {

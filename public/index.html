@@ -92,6 +92,27 @@
   ::-webkit-scrollbar { width:10px; height:10px; }
   ::-webkit-scrollbar-thumb { background:rgba(0,51,102,.2); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
   ::-webkit-scrollbar-thumb:hover { background:rgba(0,51,102,.35); background-clip:padding-box; }
+  /* Portal de entrada (hero) */
+  .hero { grid-column:1/-1; border-radius:18px; padding:26px 28px; color:#fff; border-top:3px solid var(--red);
+    background:linear-gradient(135deg,#003366 0%,#0a4f8a 60%,#0d63ad 100%); box-shadow:var(--shadow);
+    display:flex; flex-wrap:wrap; gap:18px 32px; align-items:center; justify-content:space-between; }
+  .hero h1 { margin:0 0 6px; font-size:23px; font-weight:700; letter-spacing:-.02em; }
+  .hero p { margin:0; max-width:540px; color:#d3e3f5; font-size:14px; }
+  .flow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .flow-step { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.2); padding:7px 13px; border-radius:999px; font-size:13px; font-weight:600; white-space:nowrap; }
+  .flow-step b { width:20px; height:20px; display:grid; place-items:center; border-radius:50%; background:#fff; color:var(--navy); font-size:11px; }
+  .flow-arrow { color:rgba(255,255,255,.55); font-weight:700; }
+  @media (max-width:680px){ .flow{ display:none; } }
+  /* Placeholder vacio del Contrat@ (antes de generar): claro, no el bloque oscuro de codigo */
+  pre.muted { background:#f7f9fc; color:var(--mut); border:1px dashed var(--line); font-family:inherit; }
+  /* Registro de entradas */
+  table.reg { width:100%; border-collapse:collapse; font-size:13.5px; }
+  table.reg th { text-align:left; color:var(--mut); font-weight:600; font-size:11px; text-transform:uppercase;
+    letter-spacing:.05em; padding:8px 10px; border-bottom:1px solid var(--line); }
+  table.reg td { padding:9px 10px; border-bottom:1px solid var(--line); }
+  table.reg tbody tr:hover td { background:#f5f8fc; }
+  .reg-empty { color:var(--mut); font-size:13px; display:inline-block; padding:6px 2px; }
 </style>
 </head>
 <body>
@@ -103,6 +124,22 @@
   <span class="pill">v0.1 · local</span>
 </header>
 <main>
+  <section class="hero">
+    <div>
+      <h1>Altas y Contratos</h1>
+      <p>Del caos de entrada — email, WhatsApp, foto del DNI — a la documentación lista: la IA extrae y valida los datos, y genera el Contrat@ y la ficha para el portal RED.</p>
+    </div>
+    <div class="flow">
+      <span class="flow-step"><b>1</b> Entrada</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step"><b>2</b> IA + validación</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step"><b>3</b> Contrat@</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step"><b>4</b> Portal RED</span>
+    </div>
+  </section>
+
   <section class="panel">
     <h2><span class="step">1</span>Entrada</h2>
     <p class="muted">Pega el email / WhatsApp / notas de la llamada y/o sube la foto del DNI o el contrato.</p>
@@ -125,6 +162,8 @@
       <button class="sec" id="btnValidar">Revalidar</button>
       <button id="btnContrata">📄 Generar Contrat@ XML</button>
       <button class="sec" id="btnAlta">📋 Ficha portal RED</button>
+      <button class="sec" id="btnRegistrar">💾 Registrar entrada</button>
+      <span class="muted" id="regEstado"></span>
     </div>
   </section>
 
@@ -144,6 +183,15 @@
       <button class="sec" id="btnCopiarAlta" disabled>📋 Copiar ficha completa (texto)</button>
       <span class="muted" id="copiaEstado"></span>
     </div>
+  </section>
+
+  <section class="panel" style="grid-column:1/-1">
+    <h2><span class="step">5</span>Entradas registradas</h2>
+    <div class="row" style="justify-content:space-between">
+      <p class="muted" style="margin:0">Las altas que vas procesando quedan guardadas aquí. Pulsa «Cargar» para reabrir una en el formulario.</p>
+      <button class="sec" id="btnRefrescarReg">↻ Actualizar</button>
+    </div>
+    <div id="registroTabla" style="margin-top:10px"><span class="reg-empty">Cargando…</span></div>
   </section>
 </main>
 
@@ -330,6 +378,38 @@ function altaTexto() {
 $('#btnAlta').addEventListener('click', renderAlta);
 $('#btnCopiarAlta').addEventListener('click', () => copiar(altaTexto()));
 
+// --- Registro de entradas (persistente) ---
+let REGISTRO = {};
+async function cargarRegistro() {
+  const cont = $('#registroTabla');
+  try {
+    const arr = await (await fetch('/api/entradas')).json();
+    if (!Array.isArray(arr) || !arr.length) { cont.innerHTML = '<span class="reg-empty">Aún no hay entradas registradas.</span>'; return; }
+    REGISTRO = {};
+    let html = '<table class="reg"><thead><tr><th>Fecha</th><th>Trabajador</th><th>NIF/NIE</th><th>Empresa (CIF)</th><th>Tipo</th><th></th></tr></thead><tbody>';
+    for (const e of arr) {
+      REGISTRO[e.id] = e.ficha;
+      const f = String(e.fecha || '').slice(0, 16).replace('T', ' ');
+      html += `<tr><td>${esc(f)}</td><td>${esc(e.trabajador || '—')}</td><td>${esc(e.ipf || '—')}</td><td>${esc(e.empresaCif || '—')}</td><td>${esc(e.tipo || '—')}</td><td><button class="copyBtn" data-id="${esc(e.id)}">Cargar</button></td></tr>`;
+    }
+    cont.innerHTML = html + '</tbody></table>';
+    cont.querySelectorAll('button[data-id]').forEach((b) => b.addEventListener('click', () => {
+      const fi = REGISTRO[b.dataset.id];
+      if (fi) { escribirFicha(fi); $('#avisos').innerHTML = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    }));
+  } catch { cont.innerHTML = '<span class="reg-empty">Error al cargar el registro.</span>'; }
+}
+$('#btnRegistrar').addEventListener('click', async () => {
+  $('#regEstado').textContent = 'Guardando…';
+  try {
+    const r = await fetch('/api/entradas', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ficha: leerFicha() }) });
+    if (r.ok) { $('#regEstado').textContent = '💾 Registrada'; cargarRegistro(); }
+    else { const j = await r.json().catch(() => ({})); $('#regEstado').textContent = '✕ ' + (j.error || 'error'); }
+  } catch (e) { $('#regEstado').textContent = '✕ ' + e.message; }
+  setTimeout(() => { $('#regEstado').textContent = ''; }, 2500);
+});
+$('#btnRefrescarReg').addEventListener('click', cargarRegistro);
+
 (async function init() {
   try {
     const e = await (await fetch('/api/estado')).json();
@@ -338,6 +418,7 @@ $('#btnCopiarAlta').addEventListener('click', () => copiar(altaTexto()));
     $('#estado').style.color = e.iaConfigurada ? 'var(--ok)' : 'var(--err)';
   } catch { $('#estado').textContent = 'sin servidor'; }
   construirFormulario();
+  cargarRegistro();
 })();
 </script>
 </body>

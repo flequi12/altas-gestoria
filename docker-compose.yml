@@ -9,7 +9,14 @@ services:
     # El nginx publico (CT 100) hace TLS + Basic Auth + reverse-proxy a este :3010.
     ports:
       - "3010:3010"
+    environment:
+      - DATA_DIR=/app/data
+    volumes:
+      - entradas_data:/app/data
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+
+volumes:
+  entradas_data:
