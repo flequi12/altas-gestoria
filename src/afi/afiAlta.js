@@ -1,4 +1,10 @@
-// AFI - Mensaje de Afiliacion (Sistema RED / TGSS): movimiento de ALTA.
+// AFI - este modulo DECODIFICA el fichero de RESPUESTA (FRA) que devuelve la TGSS
+// tras procesar un movimiento (segmentos DID/DAU/DEM/RZS/NAN/DTR/DRE/DMO).
+// OJO: NO es el formato de la PETICION de alta. La peticion .AFI (lo que hay que
+// GENERAR) usa ETI/EMP/RZS/TRA/AYN/FAB/DAM v9.1 -> ver docs/AFI.md. El generador
+// de peticion se construira con el doc "Tablas y Formatos Comunes" (codigos T-7
+// accion=alta, T-18, formato fecha, cabecera ETI). Por eso aqui NO hay generador
+// de peticion valido.
 // Fichero plano de POSICION FIJA, registros de 70 caracteres, un segmento por
 // linea identificado por una etiqueta de 3 letras.
 //
