@@ -4,6 +4,7 @@ import {
 } from '../src/validadores/identidad.js';
 import { fichaVacia, camposQueFaltan } from '../src/dominio/esquema.js';
 import { construirContrataXml } from '../src/contrata/contrataBuilder.js';
+import { decodificarAfiAlta, construirAfiAltaPreliminar, RECORD_LEN } from '../src/afi/afiAlta.js';
 
 let pasan = 0, fallan = 0;
 const ok = (cond, msg) => { if (cond) { pasan++; } else { fallan++; console.error('  ✕ ' + msg); } };
@@ -75,6 +76,47 @@ e.empresa.cif = 'B91222919'; e.empresa.razonSocial = 'PEPE & CIA';
 e.trabajador.ipf = '38132419Y'; e.trabajador.nombre = 'X<Y';
 e.trabajador.apellido1 = 'Z'; e.contrato.tipo = '100'; e.contrato.fechaInicio = '2026-01-01';
 ok(construirContrataXml(e).includes('X&lt;Y Z'), 'escapa < en el contenido');
+
+grupo('AFI alta - decodificador (layout real, valores anonimizados)');
+const pad = (s) => (s.length < RECORD_LEN ? s.padEnd(RECORD_LEN, ' ') : s.slice(0, RECORD_LEN));
+const afi = [
+  pad('DID' + 'RYC26WABF1TC100' + '999999' + 'A172240400000X' + '20260115120000' + 'HUELLA123'),
+  pad('DAU' + '20220103' + 'GESTORIA DEMO SLP'),
+  pad('DEM' + '281234500000017'),
+  pad('RZS' + 'EMPRESA DEMO, S.L.'),
+  pad('NAN' + 'JUAN'.padEnd(15) + 'PEREZ'.padEnd(20) + 'LOPEZ'.padEnd(20)),
+  pad('DTR' + '281234567890' + '100000' + '12345678Z' + '2000041100'),
+  pad('DRE' + '0101' + '20260115' + '00000000' + '20260115'),
+  pad('DMO' + '0' + '20260115' + '08'),
+].join('\r\n');
+ok(afi.split('\r\n').every((l) => l.length === RECORD_LEN), 'todos los registros miden 70');
+const dec = decodificarAfiAlta(afi);
+ok(dec.autorizacion === '999999', 'DID autorizacion');
+ok(dec.autorizado.razonSocial === 'GESTORIA DEMO SLP', 'DAU razon social');
+ok(dec.empresa.ccc === '281234500000017', 'DEM CCC (15 digitos)');
+ok(dec.empresa.razonSocial === 'EMPRESA DEMO, S.L.', 'RZS razon social');
+ok(dec.trabajador.nombre === 'JUAN', 'NAN nombre');
+ok(dec.trabajador.apellido1 === 'PEREZ', 'NAN apellido1');
+ok(dec.trabajador.apellido2 === 'LOPEZ', 'NAN apellido2');
+ok(dec.trabajador.naf === '281234567890', 'DTR NAF (12)');
+ok(dec.trabajador.ipf === '12345678Z', 'DTR IPF/NIF');
+ok(dec.alta.fechaRealAlta === '20260115', 'DRE fecha real alta');
+ok(dec.alta.grupoCotizacion === '08', 'DMO grupo cotizacion');
+
+grupo('AFI alta - generador preliminar (round-trip de campos confirmados)');
+const datosAfi = {
+  empresa: { ccc: '281234500000017', razonSocial: 'EMPRESA DEMO, S.L.' },
+  trabajador: { nombre: 'Juan', apellido1: 'Perez', apellido2: 'Lopez', naf: '281234567890', ipf: '12345678Z' },
+  alta: { fechaRealAlta: '20260115', grupoCotizacion: '08' },
+};
+const gen = construirAfiAltaPreliminar(datosAfi);
+ok(gen.split(/\r?\n/).filter(Boolean).every((l) => l.length === RECORD_LEN), 'generado: registros de 70');
+const rt = decodificarAfiAlta(gen);
+ok(rt.empresa.ccc === '281234500000017', 'round-trip CCC');
+ok(rt.trabajador.naf === '281234567890', 'round-trip NAF');
+ok(rt.trabajador.ipf === '12345678Z', 'round-trip IPF');
+ok(rt.trabajador.nombre === 'JUAN', 'round-trip nombre (mayusculas)');
+ok(rt.alta.grupoCotizacion === '08', 'round-trip grupo cotizacion');
 
 console.log(`\n=== ${pasan} OK, ${fallan} fallan ===`);
 process.exit(fallan ? 1 : 0);
