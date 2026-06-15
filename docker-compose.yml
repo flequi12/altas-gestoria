@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     # Secretos (ANTHROPIC_API_KEY, etc.) desde el .env del CT (NO va en la imagen).
     env_file: .env
-    # El nginx publico (CT 100) hace TLS + Basic Auth + reverse-proxy a este :3010.
+    # El nginx publico (CT 100) hace TLS + reverse-proxy a este :3010 (el login es propio de la app).
     ports:
       - "3010:3010"
     environment:

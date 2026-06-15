@@ -47,41 +47,54 @@ function claveDedup(o) {
   return [o.ipf, o.empresaCif, o.fechaInicio].map((x) => String(x || '').trim().toUpperCase()).join('|');
 }
 
+// Las escrituras son read-modify-write; las serializamos en una cola para que el
+// autoguardado (que dispara en cada generacion) no pueda pisar otra escritura.
+let cadena = Promise.resolve();
+function serializar(tarea) {
+  const resultado = cadena.then(() => tarea());
+  cadena = resultado.then(() => {}, () => {}); // la cola sigue aunque una tarea falle
+  return resultado;
+}
+
 export async function listarEntradas() {
   return leer();
 }
 
-export async function guardarEntrada(ficha, fechaIso) {
-  const arr = await leer();
-  const resumen = resumenEntrada(ficha);
-  const clave = claveDedup(resumen);
-  const identificable = clave.replace(/\|/g, '') !== '';
-  const fecha = fechaIso || new Date().toISOString();
+export function guardarEntrada(ficha, fechaIso) {
+  return serializar(async () => {
+    const arr = await leer();
+    const resumen = resumenEntrada(ficha);
+    const clave = claveDedup(resumen);
+    const identificable = clave.replace(/\|/g, '') !== '';
+    const fecha = fechaIso || new Date().toISOString();
 
-  // Si ya existe una entrada con la misma identidad, se actualiza y sube arriba
-  // (evita duplicados al autoguardar en cada generacion del mismo alta).
-  if (identificable) {
-    const i = arr.findIndex((e) => claveDedup(e) === clave);
-    if (i >= 0) {
-      const [existente] = arr.splice(i, 1);
-      const actualizada = { ...existente, fecha, ...resumen, ficha };
-      arr.unshift(actualizada);
-      await escribir(arr);
-      return actualizada;
+    // Si ya existe una entrada con la misma identidad, se actualiza y sube arriba
+    // (evita duplicados al autoguardar en cada generacion del mismo alta).
+    if (identificable) {
+      const i = arr.findIndex((e) => claveDedup(e) === clave);
+      if (i >= 0) {
+        const [existente] = arr.splice(i, 1);
+        const actualizada = { ...existente, fecha, ...resumen, ficha };
+        arr.unshift(actualizada);
+        await escribir(arr);
+        return actualizada;
+      }
     }
-  }
 
-  const entrada = { id: crypto.randomUUID(), fecha, ...resumen, ficha };
-  arr.unshift(entrada); // mas reciente primero
-  await escribir(arr);
-  return entrada;
+    const entrada = { id: crypto.randomUUID(), fecha, ...resumen, ficha };
+    arr.unshift(entrada); // mas reciente primero
+    await escribir(arr);
+    return entrada;
+  });
 }
 
-export async function borrarEntrada(id) {
-  const arr = await leer();
-  const i = arr.findIndex((e) => e.id === id);
-  if (i < 0) return false;
-  arr.splice(i, 1);
-  await escribir(arr);
-  return true;
+export function borrarEntrada(id) {
+  return serializar(async () => {
+    const arr = await leer();
+    const i = arr.findIndex((e) => e.id === id);
+    if (i < 0) return false;
+    arr.splice(i, 1);
+    await escribir(arr);
+    return true;
+  });
 }

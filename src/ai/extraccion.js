@@ -135,15 +135,33 @@ export async function extraerFicha({ texto = '', imagenes = [] } = {}) {
     messages: [{ role: 'user', content }],
   };
 
-  const resp = await fetch(config.anthropic.baseUrl, {
-    method: 'POST',
-    headers: {
-      'x-api-key': config.anthropic.apiKey,
-      'anthropic-version': config.anthropic.version,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(cuerpo),
-  });
+  // Timeout duro: si la API se cuelga, no dejamos la peticion colgada indefinidamente.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  let resp;
+  try {
+    resp = await fetch(config.anthropic.baseUrl, {
+      method: 'POST',
+      headers: {
+        'x-api-key': config.anthropic.apiKey,
+        'anthropic-version': config.anthropic.version,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(cuerpo),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      const err = new Error('La IA tardo demasiado en responder (timeout 60s). Vuelve a intentarlo.');
+      err.code = 'IA_TIMEOUT';
+      throw err;
+    }
+    const err = new Error('No se pudo contactar con la API de Claude: ' + e.message);
+    err.code = 'IA_RED';
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!resp.ok) {
     const detalle = await resp.text().catch(() => '');
