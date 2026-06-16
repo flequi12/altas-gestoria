@@ -13,6 +13,7 @@
 
 import { sexoCodigo, paisCodigo, tipoContratoInfo } from './codigos.js';
 import { validarDocumento, normalizar } from '../validadores/identidad.js';
+import { municipioCodigo, ocupacionCodigo } from '../datos/oficiales.js';
 
 function esc(valor) {
   return String(valor ?? '')
@@ -75,7 +76,7 @@ export function construirContratoElemento(ficha) {
   s += el('FECHA_NACIMIENTO', fmtFecha(t.fechaNacimiento), 6);
   s += el('NACIONALIDAD', paisCodigo(t.nacionalidad), 6);
   if (paisCodigo(t.paisResidencia) === '724') {
-    s += el('MUNICIPIO_RESIDENCIA', t.municipioResidencia, 6);
+    s += el('MUNICIPIO_RESIDENCIA', municipioCodigo(t.municipioResidencia), 6);
   }
   s += el('PAIS_RESIDENCIA', paisCodigo(t.paisResidencia), 6);
   s += '    </DATOS_TRABAJADOR>\n';
@@ -84,10 +85,10 @@ export function construirContratoElemento(ficha) {
   s += el('FECHA_INICIO', fmtFecha(c.fechaInicio), 6);
   if (!info || info.temporal) s += el('FECHA_TERMINO', fmtFecha(c.fechaFin), 6);
   s += el('NIVEL_FORMATIVO', c.nivelFormativo, 6);
-  const ocu = ocupacion8(c.ocupacion); // 8 chars con blancos: NO recortar
+  const ocu = ocupacion8(ocupacionCodigo(c.ocupacion) || ''); // 4 CNO + 4 blancos
   if (ocu) s += `      <CODIGO_OCUPACION>${esc(ocu)}</CODIGO_OCUPACION>\n`;
   s += el('NACIONALIDAD_CT', paisCodigo(c.nacionalidadCentro || t.paisResidencia || 'ES'), 6);
-  s += el('MUNICIPIO_CT', c.municipioCentro || t.municipioResidencia, 6);
+  s += el('MUNICIPIO_CT', municipioCodigo(c.municipioCentro || t.municipioResidencia), 6);
   s += `      <INDICATIVO_PRTR>${esc(c.indicativoPrtr || 'N')}</INDICATIVO_PRTR>\n`;
   s += '    </DATOS_GENERALES_CONTRATO>\n';
 

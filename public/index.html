@@ -114,6 +114,19 @@
   table.reg td { padding:9px 10px; border-bottom:1px solid var(--line); }
   table.reg tbody tr:hover td { background:#f5f8fc; }
   .reg-empty { color:var(--mut); font-size:13px; display:inline-block; padding:6px 2px; }
+  /* Autocompletado de municipios (INE) / ocupaciones (CNO) */
+  .ac-wrap { position:relative; }
+  .ac-drop { position:absolute; left:0; right:0; top:100%; z-index:30; background:#fff;
+    border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); margin-top:4px;
+    max-height:240px; overflow:auto; display:none; }
+  .ac-drop.show { display:block; }
+  .ac-item { padding:7px 11px; font-size:13px; cursor:pointer; display:flex; gap:10px; align-items:baseline; }
+  .ac-item:hover, .ac-item.sel { background:#eef4fb; }
+  .ac-item b { color:var(--navy); font-variant-numeric:tabular-nums; flex:0 0 auto; }
+  .ac-item span { color:var(--ink); }
+  .ac-hint { font-size:11.5px; margin-top:3px; min-height:14px; }
+  .ac-hint.ok { color:var(--ok); }
+  .ac-hint.warn { color:var(--warn); }
   /* Pantalla de login */
   #login { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:20px;
     background:radial-gradient(700px 420px at 82% -10%, rgba(13,99,173,.55), transparent 60%), linear-gradient(160deg,#062a4d,#0a4f8a); }
@@ -278,6 +291,7 @@ function escribirFicha(ficha) {
     const v = (ficha[el.dataset.sec] || {})[el.dataset.campo];
     el.value = v == null ? '' : v;
   });
+  if (typeof autoMapearCodigos === 'function') autoMapearCodigos();
 }
 
 function pintarValidacion(val) {
@@ -463,6 +477,106 @@ $('#btnRegistrar').addEventListener('click', async () => {
 });
 $('#btnRefrescarReg').addEventListener('click', cargarRegistro);
 
+// --- Autocompletado de municipios (INE, 5 díg.) y ocupaciones (CNO-2011, 4 díg.) ---
+const normCli = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const CAT = { municipio: null, ocupacion: null };
+const HINTS = [];
+
+function indexarCat(lista) {
+  const porCodigo = new Map(), porNombre = new Map(), norm = [];
+  for (const [c, n] of lista) { const k = normCli(n); norm.push(k); porCodigo.set(c, n); if (!porNombre.has(k)) porNombre.set(k, c); }
+  return { lista, porCodigo, porNombre, norm };
+}
+
+async function cargarCatalogos() {
+  try {
+    const [m, o] = await Promise.all([
+      fetch('/api/datos/municipios').then((r) => (r.ok ? r.json() : null)),
+      fetch('/api/datos/ocupaciones').then((r) => (r.ok ? r.json() : null)),
+    ]);
+    if (m) { CAT.municipio = indexarCat(m); montarAutocomplete($('#f_trabajador_municipioResidencia'), CAT.municipio, 'municipio (INE)', 5); }
+    if (o) { CAT.ocupacion = indexarCat(o); montarAutocomplete($('#f_contrato_ocupacion'), CAT.ocupacion, 'ocupación (CNO)', 4); }
+    autoMapearCodigos();
+  } catch { /* sin catálogos: los campos siguen siendo texto libre */ }
+}
+
+function montarAutocomplete(input, cat, etiqueta, codeLen) {
+  if (!input) return;
+  const wrap = input.parentElement; wrap.classList.add('ac-wrap');
+  const drop = document.createElement('div'); drop.className = 'ac-drop';
+  const hint = document.createElement('div'); hint.className = 'ac-hint';
+  wrap.appendChild(drop); wrap.appendChild(hint);
+  const esCodigo = (v) => new RegExp(`^\\d{${codeLen}}$`).test(v);
+  let sel = -1;
+
+  const refrescarHint = () => {
+    const v = input.value.trim();
+    if (!v) { hint.textContent = ''; hint.className = 'ac-hint'; return; }
+    const cod = esCodigo(v) ? v : (cat.porNombre.get(normCli(v)) || null);
+    if (cod && cat.porCodigo.has(cod)) { hint.textContent = `✓ ${cod} · ${cat.porCodigo.get(cod)}`; hint.className = 'ac-hint ok'; }
+    else if (cod) { hint.textContent = `✓ ${cod}`; hint.className = 'ac-hint ok'; }
+    else { hint.textContent = `⚠ sin código de ${etiqueta} — elige uno del listado`; hint.className = 'ac-hint warn'; }
+  };
+  HINTS.push(refrescarHint);
+
+  const cerrar = () => { drop.classList.remove('show'); sel = -1; };
+  const elegir = (cod) => { input.value = cod; cerrar(); refrescarHint(); };
+  const filtrar = () => {
+    const q = normCli(input.value); const raw = input.value.trim();
+    if (!q) { cerrar(); return; }
+    const num = /^\d+$/.test(raw);
+    const scored = [];
+    for (let i = 0; i < cat.lista.length; i++) {
+      const nn = cat.norm[i]; const c = cat.lista[i][0];
+      let s = -1;
+      if (num && c.startsWith(raw)) s = 0;          // por código
+      else if (nn.startsWith(q)) s = 1;             // el nombre empieza por el texto
+      else if (nn.includes(' ' + q)) s = 2;         // una palabra empieza por el texto
+      else if (nn.includes(q)) s = 3;               // subcadena en cualquier punto
+      if (s >= 0) scored.push([s, cat.lista[i]]);
+    }
+    scored.sort((a, b) => a[0] - b[0] || a[1][1].localeCompare(b[1][1], 'es'));
+    const res = scored.slice(0, 12).map((x) => x[1]);
+    sel = -1;
+    if (!res.length) { cerrar(); return; }
+    drop.innerHTML = res.map(([c, n]) => `<div class="ac-item" data-c="${esc(c)}"><b>${esc(c)}</b><span>${esc(n)}</span></div>`).join('');
+    drop.querySelectorAll('.ac-item').forEach((el) => el.addEventListener('mousedown', (ev) => { ev.preventDefault(); elegir(el.dataset.c); }));
+    drop.classList.add('show');
+  };
+
+  input.addEventListener('input', () => { filtrar(); refrescarHint(); });
+  input.addEventListener('focus', () => { if (input.value.trim()) filtrar(); });
+  input.addEventListener('blur', () => setTimeout(cerrar, 150));
+  input.addEventListener('keydown', (ev) => {
+    if (!drop.classList.contains('show')) return;
+    const els = [...drop.querySelectorAll('.ac-item')];
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); sel = Math.min(sel + 1, els.length - 1); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); sel = Math.max(sel - 1, 0); }
+    else if (ev.key === 'Enter') { if (sel >= 0) { ev.preventDefault(); elegir(els[sel].dataset.c); } return; }
+    else if (ev.key === 'Escape') { cerrar(); return; }
+    else return;
+    els.forEach((el, i) => el.classList.toggle('sel', i === sel));
+    if (sel >= 0) els[sel].scrollIntoView({ block: 'nearest' });
+  });
+  refrescarHint();
+}
+
+// Convierte texto (de la IA o de una entrada cargada) a código si casa exactamente por nombre.
+function autoMapearCodigos() {
+  const campos = [['#f_trabajador_municipioResidencia', CAT.municipio, 5], ['#f_contrato_ocupacion', CAT.ocupacion, 4]];
+  for (const [selid, cat, len] of campos) {
+    if (!cat) continue;
+    const inp = $(selid); if (!inp) continue;
+    const v = inp.value.trim();
+    if (v && !new RegExp(`^\\d{${len}}$`).test(v)) {
+      const cod = cat.porNombre.get(normCli(v));
+      if (cod) inp.value = cod;
+    }
+  }
+  HINTS.forEach((fn) => fn());
+}
+
 async function iniciarApp() {
   try {
     const e = await (await fetch('/api/estado')).json();
@@ -472,6 +586,7 @@ async function iniciarApp() {
   } catch { $('#estado').textContent = 'sin servidor'; }
   construirFormulario();
   cargarRegistro();
+  cargarCatalogos();
 }
 function mostrarLogin(v) {
   $('#login').classList.toggle('show', v);

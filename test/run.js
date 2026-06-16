@@ -4,6 +4,7 @@ import {
 } from '../src/validadores/identidad.js';
 import { fichaVacia, camposQueFaltan } from '../src/dominio/esquema.js';
 import { construirContrataXml } from '../src/contrata/contrataBuilder.js';
+import { municipioCodigo, municipioReconocido, ocupacionCodigo, normNombre } from '../src/datos/oficiales.js';
 import { decodificarAfiAlta, construirAfiAltaPreliminar, RECORD_LEN } from '../src/afi/afiAlta.js';
 
 let pasan = 0, fallan = 0;
@@ -93,6 +94,26 @@ e.empresa.cif = 'B91222919'; e.trabajador.ipf = '38132419Y';
 e.trabajador.nombre = 'X<Y'; e.trabajador.apellido1 = 'Z';
 e.contrato.tipo = '100'; e.contrato.fechaInicio = '2026-01-01';
 ok(construirContrataXml(e).includes('<NOMBRE>X&lt;Y</NOMBRE>'), 'escapa < en NOMBRE');
+
+grupo('Codigos oficiales (INE / CNO)');
+ok(municipioCodigo('Guillena') === '41049', 'municipio Guillena -> 41049');
+ok(municipioCodigo('El Cuervo de Sevilla') === '41903', 'municipio con articulo delante -> codigo');
+ok(municipioCodigo('41049') === '41049', 'municipio ya en codigo pasa');
+ok(municipioCodigo('Pueblo Que No Existe') === null, 'municipio inexistente -> null');
+ok(!municipioReconocido('99999'), 'codigo 99999 no reconocido');
+ok(ocupacionCodigo('Camareros asalariados') === '5120', 'ocupacion por nombre -> 5120');
+ok(ocupacionCodigo('5120') === '5120', 'ocupacion ya en codigo pasa');
+ok(normNombre('Alcalá del Río') === 'alcala del rio', 'normaliza acentos');
+
+grupo('Contrat@ XML - coercion municipio/ocupacion por nombre');
+const cc = fichaVacia();
+cc.empresa.cif = 'B91222919'; cc.trabajador.ipf = '38132419Y';
+cc.trabajador.nombre = 'EVA'; cc.trabajador.apellido1 = 'RUIZ';
+cc.trabajador.paisResidencia = 'ES'; cc.trabajador.municipioResidencia = 'Guillena';
+cc.contrato.tipo = '100'; cc.contrato.fechaInicio = '2026-06-01'; cc.contrato.ocupacion = 'Camareros asalariados';
+const xmlc = construirContrataXml(cc);
+ok(xmlc.includes('<MUNICIPIO_RESIDENCIA>41049</MUNICIPIO_RESIDENCIA>'), 'municipio nombre -> codigo INE en el XML');
+ok(xmlc.includes('<CODIGO_OCUPACION>5120    </CODIGO_OCUPACION>'), 'ocupacion nombre -> CNO en el XML');
 
 grupo('AFI alta - decodificador (layout real, valores anonimizados)');
 const pad = (s) => (s.length < RECORD_LEN ? s.padEnd(RECORD_LEN, ' ') : s.slice(0, RECORD_LEN));

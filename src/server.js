@@ -8,6 +8,7 @@ import { construirContrataXml } from './contrata/contrataBuilder.js';
 import { TIPOS_CONTRATO } from './contrata/codigos.js';
 import { fichaVacia, camposQueFaltan } from './dominio/esquema.js';
 import { validarDocumento, validarNafFormato } from './validadores/identidad.js';
+import { MUNICIPIOS, OCUPACIONES, municipioCodigo, municipioReconocido, ocupacionCodigo, ocupacionReconocida } from './datos/oficiales.js';
 import { listarEntradas, guardarEntrada, borrarEntrada } from './almacen/entradas.js';
 import { requireAuth, comprobarCredenciales, ponerCookieSesion, borrarCookieSesion, sesionDe, authConfigurada } from './auth.js';
 
@@ -55,6 +56,19 @@ function validarFicha(ficha) {
   const naf = ficha?.trabajador?.naf;
   if (naf && !validarNafFormato(naf)) avisos.push(`NAF con formato extrano: ${naf}`);
 
+  const muni = ficha?.trabajador?.municipioResidencia;
+  if (muni) {
+    const cod = municipioCodigo(muni);
+    if (!cod) avisos.push(`Municipio no reconocido: "${muni}" (elige uno del listado o pon el codigo INE de 5 digitos)`);
+    else if (!municipioReconocido(cod)) avisos.push(`Codigo de municipio ${cod} no esta en el callejero INE (revisalo)`);
+  }
+  const ocu = ficha?.contrato?.ocupacion;
+  if (ocu) {
+    const cod = ocupacionCodigo(ocu);
+    if (!cod) avisos.push(`Ocupacion no reconocida: "${ocu}" (elige una del listado CNO o pon el codigo de 4 digitos)`);
+    else if (!ocupacionReconocida(cod)) avisos.push(`Codigo de ocupacion ${cod} no es un CNO-2011 reconocido (revisalo)`);
+  }
+
   return { faltan: camposQueFaltan(ficha), avisos };
 }
 
@@ -66,6 +80,16 @@ app.get('/api/estado', (_req, res) => {
     modelo: config.anthropic.model,
     tiposContrato: TIPOS_CONTRATO,
   });
+});
+
+// Catalogos oficiales para el autocompletado del frontend (municipios INE / ocupaciones CNO).
+app.get('/api/datos/municipios', (_req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  res.json(MUNICIPIOS);
+});
+app.get('/api/datos/ocupaciones', (_req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  res.json(OCUPACIONES);
 });
 
 // Extraccion IA: { texto?, imagenes?: [{media_type, data}] } -> { ficha, validacion }
