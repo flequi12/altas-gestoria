@@ -246,7 +246,7 @@ const SECCIONES = [
   ['empresa', 'Empresa', [['cif','CIF'],['ccc','Cuenta Cotización (CCC)'],['razonSocial','Razón social']]],
   ['trabajador', 'Trabajador', [['ipf','NIF / NIE'],['naf','NAF'],['nombre','Nombre'],['apellido1','1er apellido'],
      ['apellido2','2º apellido'],['sexo','Sexo (H/M)'],['fechaNacimiento','Nacimiento (AAAA-MM-DD)'],
-     ['nacionalidad','Nacionalidad'],['municipioResidencia','Municipio'],['telefono','Teléfono'],['email','Email']]],
+     ['nacionalidad','Nacionalidad'],['municipioResidencia','Municipio (cód. INE, no el postal)'],['telefono','Teléfono'],['email','Email']]],
   ['contrato', 'Contrato', [['tipo','Tipo (código)','select'],['fechaInicio','Inicio (AAAA-MM-DD)'],
      ['fechaFin','Fin (AAAA-MM-DD)'],['jornada','Jornada'],['grupoCotizacion','Grupo cotización'],
      ['ocupacion','Ocupación / CNO'],['categoria','Categoría'],['convenio','Convenio'],['salarioBruto','Salario bruto']]],
@@ -388,6 +388,13 @@ async function copiar(txt) {
   catch { $('#copiaEstado').textContent = '✕ no se pudo copiar'; }
   setTimeout(() => { $('#copiaEstado').textContent = ''; }, 1500);
 }
+// Para municipio/ocupación muestra "código · nombre" (el valor del campo es el código).
+function decorarCodigo(r, v) {
+  if (!v) return v;
+  if (r === 'trabajador.municipioResidencia' && CAT.municipio && CAT.municipio.porCodigo.has(v)) return `${v} · ${CAT.municipio.porCodigo.get(v)}`;
+  if (r === 'contrato.ocupacion' && CAT.ocupacion && CAT.ocupacion.porCodigo.has(v)) return `${v} · ${CAT.ocupacion.porCodigo.get(v)}`;
+  return v;
+}
 function renderAlta() {
   const f = leerFicha();
   const cont = $('#altaSheet'); cont.innerHTML = ''; cont.classList.remove('muted');
@@ -396,8 +403,9 @@ function renderAlta() {
     fs.innerHTML = `<legend>${titulo}</legend>`;
     for (const [etq, r] of campos) {
       const v = ruta(f, r) || '';
+      const disp = v ? decorarCodigo(r, v) : '';
       const row = document.createElement('div'); row.className = 'altaRow';
-      row.innerHTML = `<span class="altaEtq">${esc(etq)}</span><span class="altaVal">${v ? esc(v) : '—'}</span>`;
+      row.innerHTML = `<span class="altaEtq">${esc(etq)}</span><span class="altaVal">${disp ? esc(disp) : '—'}</span>`;
       if (v) {
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'copyBtn'; b.textContent = '📋'; b.title = 'Copiar';
@@ -415,7 +423,7 @@ function altaTexto() {
   const nom = ['trabajador.nombre','trabajador.apellido1','trabajador.apellido2'].map((r) => ruta(f, r)).filter(Boolean).join(' ');
   const out = ['ALTA — ' + (nom || '(sin nombre)')];
   for (const [titulo, campos] of ALTA_SECCIONES) {
-    const lineas = campos.map(([etq, r]) => { const v = ruta(f, r); return v ? `  ${etq}: ${v}` : null; }).filter(Boolean);
+    const lineas = campos.map(([etq, r]) => { const v = ruta(f, r); return v ? `  ${etq}: ${decorarCodigo(r, v)}` : null; }).filter(Boolean);
     if (lineas.length) out.push(titulo + '\n' + lineas.join('\n'));
   }
   return out.join('\n');
